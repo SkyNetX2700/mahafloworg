@@ -42,11 +42,11 @@ const Branding = ({ session }) => {
   return <><SectionHeader eyebrow="DEVELOPER · BRAND SYSTEM" title="Branding" description="Manage the shared identity shown across all MahaFlow workspaces."/><div className="branding-layout"><section className="settings-section"><div className="settings-title"><Palette/><div><h3>Application identity</h3><p>Changes are stored centrally in Supabase.</p></div></div><label>Application name<input value={values.app_name} onChange={event => set("app_name", event.target.value)} data-testid="branding-name-input"/></label><label>Tagline<input value={values.tagline} onChange={event => set("tagline", event.target.value)} data-testid="branding-tagline-input"/></label><div className="form-grid"><label>Primary color<input type="color" value={values.primary_color} onChange={event => set("primary_color", event.target.value)} data-testid="branding-primary-color-input"/></label><label>Accent color<input type="color" value={values.accent_color} onChange={event => set("accent_color", event.target.value)} data-testid="branding-accent-color-input"/></label></div><label>Logo URL<input value={values.logo_url || ""} onChange={event => set("logo_url", event.target.value)} data-testid="branding-logo-url-input"/></label><button className="primary-button" data-testid="branding-save-button" onClick={save}><Check size={17}/>Save branding</button>{message && <div className="notice-line" data-testid="branding-message">{message}</div>}</section><section className="brand-preview" style={{ "--preview-primary": values.primary_color, "--preview-accent": values.accent_color }} data-testid="branding-preview"><img src={values.logo_url || "/mahaflow-logo.webp"} alt="Current MahaFlow branding"/><span>LIVE PREVIEW</span><h2>{values.app_name}</h2><p>{values.tagline}</p><span className="preview-button" data-testid="branding-preview-action">Primary action</span></section></div></>;
 };
 
-export const DeveloperWorkspace = ({ page, session, profile, theme, setTheme }) => {
+export const DeveloperWorkspace = ({ page, session, profile, theme, setTheme, onSignOut }) => {
   if (page === "Access codes") return <AccessCodeManager/>;
   if (page === "Authorities") return <AuthorityManager/>;
   if (page === "Facilities") return <FacilityManager/>;
-  if (page === "Branding") return <Branding session={session}/>;
-  if (page === "Settings") return <SettingsPanel {...{ role: "developer", session, profile, theme, setTheme }}/>;
+  if (page === "App Branding") return <Branding session={session}/>;
+  if (page === "Settings") return <SettingsPanel {...{ role: "developer", session, profile, theme, setTheme, onSignOut }}/>;
   return null;
 };

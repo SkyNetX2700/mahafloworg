@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { ArrowRight, Bookmark, BrainCircuit, BusFront, Clock3, MapPin, Navigation, Search, TrainFront, Trash2, Users } from "lucide-react";
+import { ArrowRight, Bookmark, BrainCircuit, BusFront, Clock3, MapPin, Navigation, Search, TrainFront, Trash2, Users, X } from "lucide-react";
 import MapView from "@/components/MapView";
 import { deleteSavedRoute, listCrowdPredictions, listCrowdReadings, listFacilities, listSavedRoutes, listTransportServices, saveRoute } from "@/lib/supabaseData";
 import { useWorkspaceData } from "@/hooks/useWorkspaceData";
 import { EmptyState, ErrorState, LoadingState, SectionHeader, StatusBadge } from "@/components/workspace/WorkspaceUI";
 import { SettingsPanel } from "@/components/workspace/SettingsPanel";
 import { useLanguage } from "@/i18n";
+import { formatTime12 } from "@/lib/time";
 
 const CrowdResult = ({ result }) => (
   <div className="crowd-result" data-testid="crowd-prediction-result">
@@ -27,6 +28,7 @@ const TransportExplorer = ({ session }) => {
   const [message, setMessage] = useState("");
   const [prediction, setPrediction] = useState({});
   const [busyId, setBusyId] = useState("");
+  const [selectedService, setSelectedService] = useState(null);
 
   const filtered = useMemo(() => services.data.filter(item => {
     const matchesMode = mode === "all" || item.mode === mode;
@@ -78,15 +80,16 @@ const TransportExplorer = ({ session }) => {
     </div>
     {(fromQuery || destinationQuery || date || time) && <div className="route-search-summary" data-testid="route-search-summary"><MapPin size={14}/><span>{t("passenger.showingRoutes")} <b>{fromQuery || t("passenger.anywhere")}</b> {t("passenger.to")} <b>{destinationQuery || t("passenger.anywhere")}</b>{date ? ` · ${date}` : ""}{time ? ` · ${time}` : ""}</span></div>}
     {message && <div className="notice-line" data-testid="transport-save-message">{message}</div>}
-    {services.loading ? <LoadingState label={t("common.loading")}/> : services.error ? <ErrorState message={services.error}/> : filtered.length ? <div className="service-list">{filtered.map(service => <article className="service-row detailed-service-row" key={service.id} data-testid={`transport-service-${service.id}`}>
+    {services.loading ? <LoadingState label={t("common.loading")}/> : services.error ? <ErrorState message={services.error}/> : filtered.length ? <div className="service-list">{filtered.map(service => <article className="service-row detailed-service-row" key={service.id} data-testid={`transport-service-${service.id}`} onClick={() => setSelectedService(service)} tabIndex="0" onKeyDown={event => { if (event.key === "Enter" || event.key === " ") setSelectedService(service); }}>
       <div className={`service-mode ${service.mode}`}>{service.mode === "bus" ? <BusFront/> : <TrainFront/>}</div>
       <div className="service-main"><span>{service.service_number}</span><div className="route-path" aria-label={`${t("passenger.from")} ${service.origin} ${t("passenger.to")} ${service.destination}`}><span className="route-point"><small>{t("passenger.from")}</small><b>{service.origin}</b></span><ArrowRight className="route-arrow" size={16}/><span className="route-point"><small>{t("passenger.destination")}</small><b>{service.destination}</b></span></div><small>{service.service_name} · {service.vehicle_registration || "Vehicle details pending"} · Capacity {service.capacity || "not set"}</small></div>
-       <div className="service-time"><span><Clock3 size={14}/><small>{t("passenger.leaves")}</small><b>{String(service.departure_time || "").slice(0, 5) || "—"}</b></span><span><Clock3 size={14}/><small>{t("passenger.arrives")}</small><b>{String(service.arrival_time || "").slice(0, 5) || "—"}</b></span><small>{service.bay_or_platform || t("passenger.platformPending")}</small></div>
-      <StatusBadge value={service.status}/><button className="icon-button" title={t("passenger.saveRoute")} aria-label={`${t("passenger.saveRoute")} ${service.service_number}`} data-testid={`save-route-${service.id}`} onClick={() => save(service)}><Bookmark size={17}/></button>
-        <button type="button" className="predict-button" onClick={() => predict(service)} disabled={busyId === service.id}><span>{busyId === service.id ? <span className="predicting-state"><span className="loading-ring"/> {t("passenger.predicting")}</span> : <><BrainCircuit size={16}/>{t("passenger.predictCrowd")}</>}</span></button>
+       <div className="service-time"><span><Clock3 size={14}/><small>{t("passenger.leaves")}</small><b>{formatTime12(service.departure_time)}</b></span><span><Clock3 size={14}/><small>{t("passenger.arrives")}</small><b>{formatTime12(service.arrival_time)}</b></span><small>{service.bay_or_platform || t("passenger.platformPending")}</small></div>
+       <StatusBadge value={service.status}/><button className="icon-button" title={t("passenger.saveRoute")} aria-label={`${t("passenger.saveRoute")} ${service.service_number}`} data-testid={`save-route-${service.id}`} onClick={event => { event.stopPropagation(); save(service); }}><Bookmark size={17}/></button>
+         <button type="button" className="predict-button" onClick={event => { event.stopPropagation(); predict(service); }} disabled={busyId === service.id}><span>{busyId === service.id ? <span className="predicting-state"><span className="loading-ring"/> {t("passenger.predicting")}</span> : <><BrainCircuit size={16}/>{t("passenger.predictCrowd")}</>}</span></button>
       {prediction[service.id] && <CrowdResult result={prediction[service.id]}/>}
-    </article>)}</div> : <EmptyState icon={BusFront} title={t("passenger.noMatching")} message={t("passenger.tryDifferent")} testId="transport-empty"/>}
-  </>;
+     </article>)}</div> : <EmptyState icon={BusFront} title={t("passenger.noMatching")} message={t("passenger.tryDifferent")} testId="transport-empty"/>}
+     {selectedService && <div className="service-detail-overlay" role="dialog" aria-modal="true" data-testid="transport-service-details"><section className="service-detail-modal"><div className="service-detail-heading"><div><span className="eyebrow">VERIFIED {selectedService.mode === "railway" ? "RAILWAY" : "BUS"} SERVICE</span><h2>{selectedService.service_name || selectedService.service_number}</h2><p>{selectedService.service_number}</p></div><button className="icon-button" onClick={() => setSelectedService(null)} aria-label="Close service details"><X size={17}/></button></div><div className="detail-route"><span><small>From</small><b>{selectedService.origin}</b></span><ArrowRight/><span><small>To</small><b>{selectedService.destination}</b></span></div><div className="detail-timing"><div><small>Leaves {selectedService.origin}</small><strong>{formatTime12(selectedService.departure_time)}</strong></div><div><small>Arrives {selectedService.destination}</small><strong>{formatTime12(selectedService.arrival_time)}</strong></div></div><div className="detail-meta"><span>{selectedService.bay_or_platform || "Platform information pending"}</span><span>Capacity {selectedService.capacity || "not set"}</span><StatusBadge value={selectedService.status}/></div><button className="primary-button" onClick={() => { setSelectedService(null); predict(selectedService); }}><BrainCircuit size={17}/>Predict crowd for this service</button></section></div>}
+   </>;
 };
 
 const PredictionCenter = () => {
@@ -116,11 +119,11 @@ const SavedRoutes = ({ session }) => {
   return <><SectionHeader eyebrow={t("passenger.personalEyebrow")} title={t("passenger.savedRoutesTitle")} description={t("passenger.savedRoutesDescription")}/>{routes.loading ? <LoadingState label={t("common.loading")}/> : routes.error ? <ErrorState message={routes.error}/> : routes.data.length ? <div className="saved-grid">{routes.data.map(route => <article className="saved-card" key={route.route_id} data-testid={`saved-route-${route.route_id}`}><div className="service-mode">{route.mode === "railway" ? <TrainFront/> : <BusFront/>}</div><span><small>{route.service_number || route.mode}</small><b>{route.origin || t("passenger.from")} → {route.destination || route.route_id}</b></span><button className="icon-button" aria-label={t("passenger.removeSavedRoute")} data-testid={`delete-saved-route-${route.route_id}`} onClick={() => remove(route.route_id)}><Trash2 size={16}/></button></article>)}</div> : <EmptyState icon={Bookmark} title={t("passenger.noSavedRoutes")} message={t("passenger.noSavedRoutesMessage")} testId="saved-routes-empty"/>}</>;
 };
 
-export const PassengerWorkspace = ({ page, session, profile, theme, setTheme }) => {
+export const PassengerWorkspace = ({ page, session, profile, theme, setTheme, onSignOut }) => {
   if (page === "Search") return <TransportExplorer session={session}/>;
   if (page === "AI crowd prediction") return <PredictionCenter/>;
   if (page === "Crowd map") return <CrowdMap/>;
   if (page === "Saved routes") return <SavedRoutes session={session}/>;
-  if (page === "Settings") return <SettingsPanel {...{ role: "passenger", session, profile, theme, setTheme }}/>;
+  if (page === "Settings") return <SettingsPanel {...{ role: "passenger", session, profile, theme, setTheme, onSignOut }}/>;
   return null;
 };

@@ -89,6 +89,13 @@ const serializeContext = (value: unknown) => {
   }
 };
 
+const formatAssistantText = (value: string) => value
+  .replace(/\*\*/g, "")
+  .replace(/\*/g, "")
+  .replace(/^\s*[-]\s?/gm, "• ")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
+
 router.post("/gemini/chat", async (request, response) => {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) {
@@ -132,7 +139,7 @@ ${serializeContext(body?.context)}`;
       response.status(502).json({ detail: "MahaFlow AI could not answer right now. Please try again." });
       return;
     }
-    const message = result.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
+    const message = formatAssistantText(result.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "");
     if (!message) {
       response.status(502).json({ detail: "MahaFlow AI returned no answer. Please try again." });
       return;

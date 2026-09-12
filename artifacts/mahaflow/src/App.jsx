@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BusFront, Camera, Code2, KeyRound, LockKeyhole, LogOut, MapPin, Menu, Moon, ShieldCheck, Sparkles, Sun, UserRound, Users, X, BrainCircuit } from "lucide-react";
+import { BusFront, Camera, Code2, KeyRound, LockKeyhole, MapPin, Menu, Moon, ShieldCheck, Sparkles, Sun, UserRound, Users, X, BrainCircuit } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AuthPage } from "@/components/auth/AuthPage";
 import { AuthorityOnboarding } from "@/components/auth/AuthorityOnboarding";
@@ -20,8 +20,8 @@ import "@/Workspace.css";
 
 const navigation = {
   passenger: [["Search", BusFront], ["MF AI", BrainCircuit], ["AI crowd prediction", BrainCircuit], ["Crowd map", Users], ["Saved routes", MapPin], ["Settings", Sun]],
-  authority: [["Live monitoring", Users], ["MF AI", BrainCircuit], ["CCTV cameras", Camera], ["Transport registry", BusFront], ["Reports", Sparkles], ["Settings", Sun]],
-  developer: [["Access codes", KeyRound], ["Authorities", ShieldCheck], ["Facilities", MapPin], ["Branding", Sparkles], ["Settings", Sun]],
+  authority: [["Live monitoring", Users], ["MF AI", BrainCircuit], ["AI crowd prediction", BrainCircuit], ["CCTV cameras", Camera], ["Transport registry", BusFront], ["Reports", Sparkles], ["Settings", Sun]],
+  developer: [["Access codes", KeyRound], ["Authorities", ShieldCheck], ["Facilities", MapPin], ["App Branding", Sparkles], ["Settings", Sun]],
 };
 
 const Logo = ({ light = false, testId }) => <BrandLogo light={light} testId={testId}/>;
@@ -40,7 +40,7 @@ const navTranslationKeys = {
   "Access codes": "nav.codes",
   Authorities: "nav.workspace",
   Facilities: "nav.crowdMap",
-  Branding: "nav.settings",
+  "App Branding": "nav.branding",
 };
 
 const Sidebar = ({ role, page, setPage, theme, setTheme, mobileOpen, setMobileOpen, profile, session, onSignOut }) => {
@@ -54,7 +54,7 @@ const Sidebar = ({ role, page, setPage, theme, setTheme, mobileOpen, setMobileOp
     <div className="current-role" data-testid="current-user-role"><RoleIcon size={16}/><span><small>Signed in as</small><b>{role}</b></span><LockKeyhole size={14}/></div>
     <div className="nav-label">{t("nav.workspace")}</div>
     <nav>{navigation[role].map(([label, Icon]) => <button key={label} className={page === label ? "selected" : ""} onClick={() => { setPage(label); setMobileOpen(false); }} data-testid={`nav-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`}><Icon size={18}/>{t(navTranslationKeys[label] || label)}</button>)}</nav>
-    <div className="sidebar-bottom"><LanguageSwitcher className="sidebar-language"/><div className="theme-row"><span><Sun size={15}/>{t("nav.appearance")}</span><button data-testid="theme-toggle-button" aria-label="Toggle color theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? <Moon size={16}/> : <Sun size={16}/>}</button></div><div className="profile-chip" data-testid="signed-in-user"><div className="avatar">{initials}</div><span><b>{displayName}</b><small>{session.user.email || role}</small></span><button className="icon-button" data-testid="logout-button" aria-label={t("nav.signOut")} title={t("nav.signOut")} onClick={onSignOut}><LogOut size={16}/></button></div></div>
+    <div className="sidebar-bottom"><LanguageSwitcher className="sidebar-language"/><div className="theme-row"><span><Sun size={15}/>{t("nav.appearance")}</span><button data-testid="theme-toggle-button" aria-label="Toggle color theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? <Moon size={16}/> : <Sun size={16}/>}</button></div><div className="profile-chip" data-testid="signed-in-user"><div className="avatar">{initials}</div><span><b>{displayName}</b><small>{session.user.email || role}</small></span></div></div>
   </aside>;
 };
 
@@ -62,14 +62,14 @@ const Workspace = ({ role = "passenger", profile, session, onSignOut }) => {
   const [page, setPage] = useState(role === "passenger" ? "Search" : role === "authority" ? "Live monitoring" : "Access codes"); const [theme, setTheme] = useState("light"); const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { getUserSettings(session.user.id).then(settings => { if (settings?.theme) setTheme(settings.theme); }).catch(() => {}); }, [session.user.id]);
   useEffect(() => { const dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches); document.documentElement.classList.toggle("dark", dark); }, [theme]);
-  const pageProps = { page, session, profile, theme, setTheme };
+  const pageProps = { page, session, profile, theme, setTheme, onSignOut };
   return <div className="workspace" data-testid="workspace">
     <Sidebar {...{ role, page, setPage, theme, setTheme, mobileOpen, setMobileOpen, profile, session, onSignOut }}/>
     {mobileOpen && <button className="sidebar-scrim" data-testid="mobile-navigation-scrim" aria-label="Close workspace navigation" onClick={() => setMobileOpen(false)}/>} 
     <main className="workspace-main"><div className="mobile-top"><Logo testId="workspace-mobile-logo"/><button className="icon-button" data-testid="mobile-menu-button" aria-label="Open workspace navigation" onClick={() => setMobileOpen(true)}><Menu/></button></div>
       {profile?.facility_id && <div className="facility-chip" data-testid="assigned-facility"><MapPin size={14}/>Facility access is code-locked</div>}
       <WorkspaceUtilities role={role} setPage={setPage}/>
-      {page === "MF AI" && <MahaFlowAI role={role}/>}
+      {page === "MF AI" && <MahaFlowAI role={role} session={session}/>}
       {role === "passenger" && page !== "MF AI" && <PassengerWorkspace {...pageProps}/>}
       {role === "authority" && page !== "MF AI" && <AuthorityWorkspace {...pageProps}/>}
       {role === "developer" && <DeveloperWorkspace {...pageProps}/>} 

@@ -31,6 +31,13 @@ const makeAlerts = (role, payload) => {
 export const WorkspaceUtilities = ({ role, setPage }) => {
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [seenIds, setSeenIds] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(`mahaflow-seen-alerts-${role}`) || "[]");
+    } catch {
+      return [];
+    }
+  });
   useEffect(() => {
     let active = true;
     const requests = role === "developer"
@@ -40,9 +47,29 @@ export const WorkspaceUtilities = ({ role, setPage }) => {
     return () => { active = false; };
   }, [role]);
 
+  useEffect(() => {
+    if (!open || !alerts.length) return;
+    const ids = alerts.map(alert => alert.id);
+    setSeenIds(ids);
+    window.localStorage.setItem(`mahaflow-seen-alerts-${role}`, JSON.stringify(ids));
+  }, [alerts, open, role]);
+
+  const unreadCount = alerts.filter(alert => !seenIds.includes(alert.id)).length;
+  const openNotifications = () => {
+    setOpen(current => {
+      const next = !current;
+      if (next) {
+        const ids = alerts.map(alert => alert.id);
+        setSeenIds(ids);
+        window.localStorage.setItem(`mahaflow-seen-alerts-${role}`, JSON.stringify(ids));
+      }
+      return next;
+    });
+  };
+
   return <div className="workspace-utilities">
     <div className="notification-wrap">
-      <button className={`notification-button ${open ? "selected" : ""}`} onClick={() => setOpen(current => !current)} aria-label="Open alerts" data-testid="notifications-button"><Bell size={18}/>{alerts.length > 0 && <b>{alerts.length > 9 ? "9+" : alerts.length}</b>}</button>
+      <button className={`notification-button ${open ? "selected" : ""}`} onClick={openNotifications} aria-label="Open alerts" data-testid="notifications-button"><Bell size={18}/>{unreadCount > 0 && <b>{unreadCount > 9 ? "9+" : unreadCount}</b>}</button>
       {open && <div className="notification-panel" data-testid="notifications-panel"><div className="notification-head"><span><b>Alerts</b><small>Verified MahaFlow updates</small></span><button className="icon-button" onClick={() => setOpen(false)} aria-label="Close alerts"><X size={14}/></button></div>{alerts.map(alert => <div className="notification-item" key={alert.id}>{alert.tone === "warning" ? <TriangleAlert size={15}/> : <CheckCircle2 size={15}/>}<span><b>{alert.title}</b><small>{alert.text}</small></span></div>)}</div>}
     </div>
     {role !== "developer" && <button className="ai-float-button" onClick={() => setPage("MF AI")} aria-label="Open MahaFlow AI" title="Open MahaFlow AI" data-testid="floating-ai-button"><BrainCircuit size={22}/><span>MF AI</span></button>}
